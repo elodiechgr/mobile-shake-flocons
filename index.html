@@ -51,8 +51,12 @@
             pointer-events: none;
             z-index: 10;
             text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
-            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
             opacity: 0;
+            will-change: transform, top, left, opacity;
+        }
+
+        .snowflake.falling {
+            transition: top 2s ease-in, left 1.5s ease-out, opacity 1.5s ease-in, transform 2s ease-out;
         }
 
         .instruction {
@@ -96,6 +100,8 @@
 
         let lastX = 0, lastY = 0, lastZ = 0;
         let removed = 0;
+        let shakeThrottle = false;
+        let accHistory = [];
 
         function createSnowflakes() {
             const rect = text.getBoundingClientRect();
@@ -115,16 +121,39 @@
 
         createSnowflakes();
 
-        // Détection du shake sur mobile
+        // Détection du shake sur mobile (améliorée)
         if (window.DeviceMotionEvent) {
             window.addEventListener('devicemotion', (e) => {
-                const acc = e.accelerationIncludingGravity;
-                const dx = Math.abs(acc.x - lastX);
-                const dy = Math.abs(acc.y - lastY);
-                const dz = Math.abs(acc.z - lastZ);
+                if (shakeThrottle) return;
 
-                if (dx > 15 || dy > 15 || dz > 15) {
-                    dropSnow(8);
+                const acc = e.accelerationIncludingGravity;
+
+                // Calculer l'accélération totale
+                const totalAcc = Math.sqrt(
+                    Math.pow(acc.x || 0, 2) +
+                    Math.pow(acc.y || 0, 2) +
+                    Math.pow(acc.z || 0, 2)
+                );
+
+                accHistory.push(totalAcc);
+                if (accHistory.length > 10) accHistory.shift();
+
+                // Calculer la variation
+                if (accHistory.length >= 3) {
+                    const recent = accHistory.slice(-3);
+                    const max = Math.max(...recent);
+                    const min = Math.min(...recent);
+                    const variation = max - min;
+
+                    // Seuil plus bas et plus sensible (était 15)
+                    if (variation > 5) {
+                        const intensity = Math.min(Math.floor(variation / 2), 12);
+                        dropSnow(intensity);
+
+                        // Throttle pour éviter trop d'appels
+                        shakeThrottle = true;
+                        setTimeout(() => shakeThrottle = false, 100);
+                    }
                 }
 
                 lastX = acc.x;
@@ -145,21 +174,36 @@
         function dropSnow(count) {
             const flakes = document.querySelectorAll('.snowflake');
             const available = Array.from(flakes).filter(f =>
-                parseFloat(f.style.top) < window.innerHeight
+                parseFloat(f.style.top) < window.innerHeight && !f.classList.contains('falling')
             );
 
             for (let i = 0; i < Math.min(count, available.length); i++) {
                 const flake = available[Math.floor(Math.random() * available.length)];
                 const left = parseFloat(flake.style.left);
 
-                flake.style.top = window.innerHeight + 100 + 'px';
-                flake.style.left = left + (Math.random() - 0.5) * 100 + 'px';
-                flake.style.opacity = '0';
-                flake.style.transform = `rotate(${Math.random() * 360}deg) scale(0.5)`;
+                // Ajouter un léger délai pour chaque flocon (effet cascade)
+                setTimeout(() => {
+                    flake.classList.add('falling');
+
+                    // Paramètres de chute plus fluides
+                    const drift = (Math.random() - 0.5) * 150; // Dérive latérale
+                    const rotation = Math.random() * 720 - 360; // Rotation complète
+                    const endTop = window.innerHeight + 50 + Math.random() * 100;
+
+                    flake.style.top = endTop + 'px';
+                    flake.style.left = left + drift + 'px';
+                    flake.style.opacity = '0';
+                    flake.style.transform = `rotate(${rotation}deg) scale(${0.3 + Math.random() * 0.3})`;
+
+                    // Nettoyer après l'animation
+                    setTimeout(() => {
+                        flake.classList.remove('falling');
+                    }, 2000);
+                }, i * 30); // Délai progressif entre chaque flocon
 
                 removed++;
 
-                // Augmenter le glow du texte
+                // Augmenter le glow du texte progressivement
                 const intensity = Math.min(removed / 50, 1);
                 text.style.textShadow = `
                     0 0 ${20 + intensity * 30}px rgba(255, 215, 0, ${0.8 + intensity * 0.2}),
