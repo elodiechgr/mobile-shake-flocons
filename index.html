@@ -122,19 +122,27 @@
         let accHistory = [];
 
         function createSnowflakes() {
-            const rect = text.getBoundingClientRect();
+            // Attendre que le DOM soit complètement chargé et positionné
+            setTimeout(() => {
+                const rect = text.getBoundingClientRect();
 
-            for (let i = 0; i < 80; i++) {
-                const flake = document.createElement('div');
-                flake.className = 'snowflake';
-                flake.textContent = ['❄', '❅', '❆'][Math.floor(Math.random() * 3)];
+                for (let i = 0; i < 100; i++) {
+                    const flake = document.createElement('div');
+                    flake.className = 'snowflake';
+                    flake.textContent = ['❄', '❅', '❆'][Math.floor(Math.random() * 3)];
 
-                flake.style.left = rect.left + Math.random() * rect.width + 'px';
-                flake.style.top = rect.top + Math.random() * rect.height + 'px';
-                flake.style.fontSize = (15 + Math.random() * 15) + 'px';
+                    flake.style.left = rect.left + Math.random() * rect.width + 'px';
+                    flake.style.top = rect.top + Math.random() * rect.height + 'px';
+                    flake.style.fontSize = (15 + Math.random() * 15) + 'px';
 
-                container.appendChild(flake);
-            }
+                    container.appendChild(flake);
+                }
+
+                // Apparition progressive des flocons
+                document.querySelectorAll('.snowflake').forEach((flake, i) => {
+                    setTimeout(() => flake.style.opacity = '1', i * 15);
+                });
+            }, 100);
         }
 
         createSnowflakes();
@@ -233,12 +241,6 @@
             if (removed > 30) instruction.style.opacity = '0';
         }
 
-        // Apparition progressive des flocons
-        setTimeout(() => {
-            document.querySelectorAll('.snowflake').forEach((flake, i) => {
-                setTimeout(() => flake.style.opacity = '1', i * 20);
-            });
-        }, 100);
     </script>
 </body>
 </html>
