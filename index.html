@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shake to Reveal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            font-family: Georgia, serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .text {
+            font-size: clamp(40px, 12vw, 120px);
+            font-weight: bold;
+            color: #FFD700;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.8),
+                         0 0 40px rgba(255, 215, 0, 0.6),
+                         0 0 60px rgba(255, 215, 0, 0.4);
+            letter-spacing: 8px;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+            transition: text-shadow 0.3s;
+        }
+
+        .snowflake {
+            position: absolute;
+            color: white;
+            font-size: 20px;
+            pointer-events: none;
+            z-index: 10;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0;
+        }
+
+        .instruction {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 18px;
+            text-align: center;
+            animation: pulse 2s ease-in-out infinite;
+            transition: opacity 0.5s;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        .shake-icon {
+            font-size: 30px;
+            display: block;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="text" id="text">MERRY CHRISTMAS</div>
+        <div class="instruction" id="instruction">
+            <span class="shake-icon">📱</span>
+            Secoue ton téléphone !<br>
+            <small>(ou bouge vite la souris)</small>
+        </div>
+    </div>
+
+    <script>
+        const text = document.getElementById('text');
+        const container = document.querySelector('.container');
+        const instruction = document.getElementById('instruction');
+
+        let lastX = 0, lastY = 0, lastZ = 0;
+        let removed = 0;
+
+        function createSnowflakes() {
+            const rect = text.getBoundingClientRect();
+
+            for (let i = 0; i < 80; i++) {
+                const flake = document.createElement('div');
+                flake.className = 'snowflake';
+                flake.textContent = ['❄', '❅', '❆'][Math.floor(Math.random() * 3)];
+
+                flake.style.left = rect.left + Math.random() * rect.width + 'px';
+                flake.style.top = rect.top + Math.random() * rect.height + 'px';
+                flake.style.fontSize = (15 + Math.random() * 15) + 'px';
+
+                container.appendChild(flake);
+            }
+        }
+
+        createSnowflakes();
+
+        // Détection du shake sur mobile
+        if (window.DeviceMotionEvent) {
+            window.addEventListener('devicemotion', (e) => {
+                const acc = e.accelerationIncludingGravity;
+                const dx = Math.abs(acc.x - lastX);
+                const dy = Math.abs(acc.y - lastY);
+                const dz = Math.abs(acc.z - lastZ);
+
+                if (dx > 15 || dy > 15 || dz > 15) {
+                    dropSnow(8);
+                }
+
+                lastX = acc.x;
+                lastY = acc.y;
+                lastZ = acc.z;
+            });
+        }
+
+        // Version desktop avec la souris
+        let mouseX = 0;
+        document.addEventListener('mousemove', (e) => {
+            const speed = Math.abs(e.clientX - mouseX);
+            mouseX = e.clientX;
+
+            if (speed > 50) dropSnow(5);
+        });
+
+        function dropSnow(count) {
+            const flakes = document.querySelectorAll('.snowflake');
+            const available = Array.from(flakes).filter(f =>
+                parseFloat(f.style.top) < window.innerHeight
+            );
+
+            for (let i = 0; i < Math.min(count, available.length); i++) {
+                const flake = available[Math.floor(Math.random() * available.length)];
+                const left = parseFloat(flake.style.left);
+
+                flake.style.top = window.innerHeight + 100 + 'px';
+                flake.style.left = left + (Math.random() - 0.5) * 100 + 'px';
+                flake.style.opacity = '0';
+                flake.style.transform = `rotate(${Math.random() * 360}deg) scale(0.5)`;
+
+                removed++;
+
+                // Augmenter le glow du texte
+                const intensity = Math.min(removed / 50, 1);
+                text.style.textShadow = `
+                    0 0 ${20 + intensity * 30}px rgba(255, 215, 0, ${0.8 + intensity * 0.2}),
+                    0 0 ${40 + intensity * 40}px rgba(255, 215, 0, ${0.6 + intensity * 0.4}),
+                    0 0 ${60 + intensity * 60}px rgba(255, 215, 0, ${0.4 + intensity * 0.4})
+                `;
+            }
+
+            if (removed > 30) instruction.style.opacity = '0';
+        }
+
+        // Apparition progressive des flocons
+        setTimeout(() => {
+            document.querySelectorAll('.snowflake').forEach((flake, i) => {
+                setTimeout(() => flake.style.opacity = '1', i * 20);
+            });
+        }, 100);
+    </script>
+</body>
+</html>
